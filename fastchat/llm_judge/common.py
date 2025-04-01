@@ -170,7 +170,10 @@ def run_judge_single(question, answer, judge, ref_answer, multi_turn=False):
             model, conv, temperature=0, max_tokens=1024
         )
     else:
-        raise ValueError(f"Invalid judge model name: {model}")
+        try:
+            judgment = chat_completion_openai(model, conv, temperature=0, max_tokens=2048)  
+        except:
+            raise ValueError(f"Invalid judge model name: {model}")      
 
     if judge.prompt_template["output_format"] == "[[rating]]":
         match = re.search(one_score_pattern, judgment)
@@ -405,23 +408,27 @@ def play_a_match_pair(match: MatchPair, output_file: str):
 
 
 def chat_completion_openai(model, conv, temperature, max_tokens, api_dict=None):
-    if api_dict is not None:
-        openai.api_base = api_dict["api_base"]
-        openai.api_key = api_dict["api_key"]
+    api_base = "http://localhost:8000/v1"
+    api_key = "EMPTY"
+
+    client = openai.OpenAI(
+        api_key=api_key,
+        base_url=api_base,
+    )
     output = API_ERROR_OUTPUT
     for _ in range(API_MAX_RETRY):
         try:
             messages = conv.to_openai_api_messages()
-            response = openai.ChatCompletion.create(
+            response = client.chat.completions.create(
                 model=model,
                 messages=messages,
                 n=1,
                 temperature=temperature,
                 max_tokens=max_tokens,
             )
-            output = response["choices"][0]["message"]["content"]
+            output = response.choices[0].message.content
             break
-        except openai.error.OpenAIError as e:
+        except Exception as e:
             print(type(e), e)
             time.sleep(API_RETRY_SLEEP)
 
@@ -700,9 +707,9 @@ def check_data(questions, model_answers, ref_answers, models, judges):
         for q in questions:
             if q["category"] not in NEED_REF_CATS:
                 continue
-            assert (
-                q["question_id"] in ref_answers[jg.model_name]
-            ), f"Missing reference answer to Question {q['question_id']} for judge {jg.model_name}"
+            # assert (
+            #     q["question_id"] in ref_answers[jg.model_name]
+            # ), f"Missing reference answer to Question {q['question_id']} for judge {jg.model_name}"
 
 
 def get_model_list(answer_dir):

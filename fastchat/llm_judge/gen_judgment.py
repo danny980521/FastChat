@@ -123,7 +123,10 @@ def make_match_single(
             m = models[i]
             a = model_answers[m][q_id]
             if ref_answers is not None:
-                ref = ref_answers[judge.model_name][q_id]
+                try:
+                    ref = ref_answers[judge.model_name][q_id]
+                except:
+                    ref = ref_answers["gpt-4"][q_id]
                 matches.append(
                     MatchSingle(
                         dict(q), m, a, judge, ref_answer=ref, multi_turn=multi_turn
